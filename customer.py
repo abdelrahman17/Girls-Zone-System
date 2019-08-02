@@ -11,29 +11,7 @@ class Customer:
         self.phone = phone
         self.address = address
 
-    def add(self):
-        try:
-            with DatabaseManager() as db:
-                db.execute('insert into CustomerTable (name, phone, address) values(?, ?, ?)',
-                           (self.name, self.phone, self.address))
-                db.commit()
-            with DatabaseManager() as db:
-                db.execute('select customer_id from CustomerTable where phone = ?', self.phone)
-                self.ID = db.fetchone()[0]
-            self.customers.append(self)
-        except pyodbc.Error as sql_err:
-            # Phone number is a unique value and already exists, update the current object with the saved data
-            # print(sql_err)
-            print("This phone number already exists in the database")
-            with DatabaseManager() as db:
-                db.execute('select * from CustomerTable where phone = ?', self.phone)
-                row = db.fetchone()
-                self.ID = row[0]
-                self.name = row[1]
-                self.phone = row[2]
-                self.address = row[3]
-
-    def edit(self, new_name: str, new_phone: str, new_address: str):
+    def edit(self, new_name, new_phone: str, new_address: str):
         try:
             with DatabaseManager() as db:
                 db.execute('update CustomerTable set name = ?, phone = ?, address = ? where customer_id = ?',
@@ -48,8 +26,25 @@ class Customer:
 
 
     def delete(self):
-        with DatabaseManager() as db:
-            db.execute('delete from CustomerTable where cutomer_id = ?', self.ID)
+        try:
+            with DatabaseManager() as db:
+                db.execute('delete from CustomerTable where customer_id = ?', self.ID)
+                db.commit()
+        except pyodbc.Error:
+            print('Error while deleting customer from the database')
+
+    @classmethod
+    def new_customer(cls, name, phone, address) -> 'Customer':
+        try:
+            with DatabaseManager() as db:
+                db.execute('insert into CustomerTable (name, phone, address) values(?, ?, ?)',
+                           (name, phone, address))
+                db.commit()
+            cls.load_cutomers()
+        except pyodbc.Error:
+            print('Error while adding new customer data to the database')
+        finally:
+            return cls.get_by_phone(phone)
 
     @classmethod
     def get_by_id(cls, ID):
@@ -67,13 +62,14 @@ class Customer:
 
     @classmethod
     def load_cutomers(cls):
+        cls.customers.clear()
         try:
             with DatabaseManager() as db:
                 db.execute('select * from CustomerTable')
                 rows = db.fetchall()
             for row in rows:
                 cls.customers.append(Customer(*row))
-        except pyodbc.Error as err:
+        except pyodbc.Error:
             print('Error while loading customers')
             # print(err)
 
