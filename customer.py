@@ -24,7 +24,6 @@ class Customer:
             print('error while editing the customer data')
             print(str(err))
 
-
     def delete(self):
         try:
             with DatabaseManager() as db:
