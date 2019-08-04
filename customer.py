@@ -40,8 +40,9 @@ class Customer:
                            (name, phone, address))
                 db.commit()
             cls.load_cutomers()
-        except pyodbc.Error:
+        except pyodbc.Error as err:
             print('Error while adding new customer data to the database')
+            print(err)
         finally:
             return cls.get_by_phone(phone)
 
@@ -50,14 +51,12 @@ class Customer:
         for customer in cls.customers:
             if customer.ID == ID:
                 return customer
-        return None
 
     @classmethod
     def get_by_phone(cls, phone):
         for customer in cls.customers:
             if customer.phone == phone:
                 return customer
-        return None
 
     @classmethod
     def load_cutomers(cls):
