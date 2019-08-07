@@ -11,11 +11,12 @@ class Customer:
         self.phone = phone
         self.address = address
 
-    def edit(self, new_name, new_phone: str, new_address: str):
+    def edit(self, new_name, new_phone, new_address):
         try:
             with DatabaseManager() as db:
-                db.execute('update CustomerTable set name = ?, phone = ?, address = ? where customer_id = ?',
-                           (new_name, new_phone, new_address, self.ID))
+                # db.execute('update CustomerTable set name = ?, phone = ?, address = ? where customer_id = ?',
+                #            (new_name, new_phone, new_address, self.ID))
+                db.execute(f"update CustomerTable set name = N'{new_name}', phone = N'{new_phone}', address = N'{new_address}' where customer_id = {self.ID}")
                 db.commit()
                 self.name = new_name
                 self.phone = new_phone
@@ -27,8 +28,9 @@ class Customer:
     def delete(self):
         try:
             with DatabaseManager() as db:
-                db.execute('delete from CustomerTable where customer_id = ?', self.ID)
+                db.execute('update CustomerTable set flag = ? where customer_id = ?',('deleted' ,self.ID))
                 db.commit()
+            self.load_cutomers()
         except pyodbc.Error:
             print('Error while deleting customer from the database')
 
@@ -36,8 +38,9 @@ class Customer:
     def new_customer(cls, name, phone, address) -> 'Customer':
         try:
             with DatabaseManager() as db:
-                db.execute('insert into CustomerTable (name, phone, address) values(?, ?, ?)',
-                           (name, phone, address))
+                # db.execute("insert into CustomerTable (name, phone, address) values(?, ?, ?)",
+                #            (name, phone, address))
+                db.execute(f"insert into CustomerTable (name, phone, address) values(N'{name}', N'{phone}', N'{address}')")
                 db.commit()
             cls.load_cutomers()
         except pyodbc.Error as err:
@@ -63,10 +66,10 @@ class Customer:
         cls.customers.clear()
         try:
             with DatabaseManager() as db:
-                db.execute('select * from CustomerTable')
+                db.execute("select * from CustomerTable where flag = 'live'")
                 rows = db.fetchall()
             for row in rows:
-                cls.customers.append(Customer(*row))
+                cls.customers.append(Customer(*row[:-1]))
         except pyodbc.Error:
             print('Error while loading customers')
             # print(err)
